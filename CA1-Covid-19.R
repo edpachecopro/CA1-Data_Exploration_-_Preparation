@@ -7,6 +7,7 @@
 #install.packages("DT")
 #install.packages("caret")
 #install.packages("reshape2")
+#install.packages("prcomp")
 
 
 # Load necessary libraries
@@ -17,43 +18,52 @@ library(ggplot2)
 library(DT)
 library(caret)
 library(reshape2)
+library(prcomp)
 
-
+###############################################################################################################
 # Load the dataset
+###############################################################################################################
+
+#loading dataset
 data <- read_csv("covid-19-EU.csv")
-
-
-#data_full <- read_csv("Crimes-2017-test.csv")
-
-
+nrow(data) #print the number of rows in the dataset
 
 # Print the first 10 lines
 datatable(head(data, 8000))
 
-
-
-# Cleaning Data
+###############################################################################################################
+# CLEANING DATA
+###############################################################################################################
 
 # Selecting only numeric columns
-Hospitalized <- sapply(data, is.numeric)
+numerical_cols <- c("CumulativePositive", "CumulativeDeceased", "CumulativeRecovered", "CurrentlyPositive", "Hospitalized", "IntensiveCare")
 
-# Filtering out rows with non-numeric values in numeric columns
-cleaned_data <- data[complete.cases(data[Hospitalized]), ]
+# Replace NA values with mean for each numeric column
+for (col in numerical_cols) {
+  data[[col]][is.na(data[[col]])] <- mean(data[[col]], na.rm = TRUE)
+}
 
-# Viewing the resulting cleaned dataset
-datatable(head(cleaned_data, 30))
+# remove rows where only some values are NA:
+data %>% filter_all(all_vars(!is.na(.)))
+data %>% filter_all(all_vars(complete.cases(.)))  
 
 
-# Remove rows with any NA values across all columns
-data_cleaned <- data[complete.cases(data), ]
+# Min-Max Normalization for numerical columns
+cleaned_data <- data
+cleaned_data[numerical_cols] <- preProcess(data[numerical_cols], method = c("range"))$x
 
-# Display the number of rows and columns before and after removing missing values
+# Display the number of rows before and after removing missing values
 cat("Before removing missing values:", nrow(data), "rows\n")
-cat("After removing missing values:", nrow(data_clean), "rows\n")
+cat("After removing missing values:", nrow(cleaned_data), "rows\n")
 
-data_cleaned <- data_cleaned[!is.na(as.numeric(data_cleaned$Hospitalized)), ]
 
+
+
+
+
+###############################################################################################################
 #TASK A
+###############################################################################################################
 
 # Check variable types
 
@@ -74,8 +84,10 @@ ggplot(missing_values, aes(x = variable, y = count)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
-
+###############################################################################################################
 #TASK B
+###############################################################################################################
+
 
 # Calculate statistical parameters
 stat_parameters <- data_cleaned %>%
@@ -89,9 +101,9 @@ stat_parameters <- data_cleaned %>%
 
 stat_parameters
 
-
+###############################################################################################################
 #TASK C
-
+###############################################################################################################
 
 
 # Select numerical columns for normalization and standardization
@@ -122,15 +134,17 @@ numerical_cols <- c("CumulativePositive")
 # Assuming data_robust_scaled contains the scaled values
 # Create a scatter plot to visualize the relationship between original and scaled values
 
-plot(data_cleaned$Hospitalized, data_robust_scaled$Hospitalized, 
+plot(data_cleaned$CumulativePositive, data_robust_scaled$CumulativePositive, 
      xlab = "Original Values (CumulativePositive)", ylab = "Scaled Values (CumulativePositive)",
      main = "Range Scaling: Original vs Scaled", type = "p", col = "blue")
 
 
 
 
-
+###############################################################################################################
 #TASK D
+###############################################################################################################
+
 
 # Calculate correlation matrix for COVID dataset
 correlation_matrix_covid <- cor(data_cleaned[, c("CumulativePositive", "CumulativeDeceased", "CumulativeRecovered", "CurrentlyPositive", "Hospitalized")], use = "complete.obs")
@@ -148,8 +162,10 @@ ggplot(cor_melted_covid, aes(Var1, Var2, fill = value)) +
   scale_fill_gradient(low = "white", high = "blue") +
   labs(title = "COVID Correlation Heatmap")
 
-
+###############################################################################################################
 #TASK F
+###############################################################################################################
+
 
 # Basic exploratory analysis for COVID dataset
 summary(data_cleaned)
@@ -172,3 +188,19 @@ print(head(eu_analysis, 20))
 print(paste("Here is 20 rows of ", total_rows, "rows of total"))
 
 
+###############################################################################################################
+#TASK G
+###############################################################################################################
+
+# Load necessary library
+
+
+# Select columns for PCA (numerical variables)
+pca_cols <- c("CumulativePositive", "CumulativeDeceased", "CumulativeRecovered", "CurrentlyPositive", "Hospitalized", "IntensiveCare")
+pca_data <- covid[, pca_cols]
+
+# Apply PCA
+pca_result <- prcomp(pca_data, scale. = TRUE)
+
+# Profile of the first few components
+summary(pca_result)
