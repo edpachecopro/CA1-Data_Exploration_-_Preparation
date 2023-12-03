@@ -7,7 +7,8 @@
 #install.packages("DT")
 #install.packages("caret")
 #install.packages("reshape2")
-#install.packages("prcomp")
+#install.packages("princomp")
+#install.packages("tidyverse")
 
 
 # Load necessary libraries
@@ -18,7 +19,8 @@ library(ggplot2)
 library(DT)
 library(caret)
 library(reshape2)
-library(prcomp)
+library(princomp)
+library(tidyverse)
 
 ###############################################################################################################
 # Load the dataset
@@ -55,9 +57,6 @@ cleaned_data[numerical_cols] <- preProcess(data[numerical_cols], method = c("ran
 # Display the number of rows before and after removing missing values
 cat("Before removing missing values:", nrow(data), "rows\n")
 cat("After removing missing values:", nrow(cleaned_data), "rows\n")
-
-
-
 
 
 
@@ -138,6 +137,29 @@ plot(data_cleaned$CumulativePositive, data_robust_scaled$CumulativePositive,
      xlab = "Original Values (CumulativePositive)", ylab = "Scaled Values (CumulativePositive)",
      main = "Range Scaling: Original vs Scaled", type = "p", col = "blue")
 
+#print plot to visualise the Positive grouped by iso
+
+data_cleaned <-  data_cleaned %>% group_by(iso3) %>% filter(sum(CumulativePositive)>0)
+
+
+plot1 <- ggplot(data_cleaned, aes(x = iso3, y = CumulativePositive)) +
+  geom_col(aes(fill = iso3)) +
+  scale_y_continuous(name = "Cumulative Positive", scale())
+
+
+#print plot to visualise the CumulativeRecovered grouped by CountryName
+
+plot1<-  data_cleaned %>% group_by(CountryName) %>% filter((CumulativeRecovered)>0)
+CumulativeRecovered <- ggplot(data_cleaned, aes(x = CountryName, y= CumulativeRecovered)) 
+CumulativeRecovered + geom_col(aes(fill=CountryName)) 
+
+
+#print plot to visualise the Hospitalized grouped by Region
+
+plot2<-  data_cleaned %>% group_by(Region) %>% filter((Hospitalized)>0)
+Hospitalized <- ggplot(data_cleaned, aes(x = Region, y= Hospitalized)) 
+Hospitalized + geom_col(aes(fill=Region)) +
+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 
 
@@ -162,6 +184,9 @@ ggplot(cor_melted_covid, aes(Var1, Var2, fill = value)) +
   scale_fill_gradient(low = "white", high = "blue") +
   labs(title = "COVID Correlation Heatmap")
 
+
+
+
 ###############################################################################################################
 #TASK F
 ###############################################################################################################
@@ -179,10 +204,6 @@ eu_analysis <- data_cleaned %>%
 
 total_rows <- nrow(eu_analysis)
 
-
-# To print the first 80 rows of eu_analysis on datatable
-datatable(head(eu_analysis,80))
-
 # To print the first 20 rows of eu_analysis on console
 print(head(eu_analysis, 20))
 print(paste("Here is 20 rows of ", total_rows, "rows of total"))
@@ -192,15 +213,61 @@ print(paste("Here is 20 rows of ", total_rows, "rows of total"))
 #TASK G
 ###############################################################################################################
 
-# Load necessary library
-
-
 # Select columns for PCA (numerical variables)
 pca_cols <- c("CumulativePositive", "CumulativeDeceased", "CumulativeRecovered", "CurrentlyPositive", "Hospitalized", "IntensiveCare")
-pca_data <- covid[, pca_cols]
+pca_data <- data_cleaned[, pca_cols]
 
 # Apply PCA
 pca_result <- prcomp(pca_data, scale. = TRUE)
 
 # Profile of the first few components
 summary(pca_result)
+
+
+
+###############################################################################################################
+#TASK H
+###############################################################################################################
+
+
+# Handling missing values (if any)
+# Replace missing values in numerical columns with the mean
+numerical_cols <- c("CumulativePositive", "CumulativeDeceased", "CumulativeRecovered", "CurrentlyPositive", "Hospitalized", "IntensiveCare")
+
+for (col in numerical_cols) {
+  data[[col]][is.na(data[[col]])] <- mean(data[[col]], na.rm = TRUE)
+}
+
+# Min-Max Normalization for numerical columns
+data_normalized <- data
+data_normalized[numerical_cols] <- preProcess(data[numerical_cols], method = c("range"))$x
+
+# Displaying first few rows of normalized data
+head(data_normalized)
+
+###############################################################################################################
+#TASK G
+###############################################################################################################
+
+" 
+Dimensionality reduction aims to simplify complex datasets by reducing the number of features or 
+variables while retaining essential information. This process is beneficial in scenarios where 
+datasets have high dimensionality, containing numerous features that might lead to increased 
+computational complexity, overfitting, or noise.
+
+Benefits of dimensionality reduction:
+1. Computational Efficiency: Reducing dimensions can speed up computations and analyses, making complex 
+algorithms more efficient.
+2. Visualization: It helps in visualizing data in lower dimensions, making it easier to interpret and 
+understand relationships.
+3. Overfitting Mitigation: High-dimensional data can cause models to overfit. Reducing dimensions 
+can mitigate this issue by focusing on essential information.
+4. Noise Reduction: Eliminating irrelevant features can filter out noise, enhancing the 
+signal-to-noise ratio in the data.
+5. Feature Engineering: Dimensionality reduction can aid in feature selection or extraction, 
+creating more robust and interpretable models.
+
+Situations benefiting from dimensionality reduction include high-dimensional datasets like image 
+recognition, genomics, natural language processing, and sensor data analysis. In these cases, 
+reducing dimensions can enhance model performance, interpretability, and overall analysis efficiency.
+"
